@@ -1,4 +1,4 @@
-import burn, time, sys, os, subprocess
+import burn, time, sys, os, subprocess, math
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -18,8 +18,24 @@ def test_step():
     B.print_grid()
 
 def test_sim(size = 20, rad=2):
-    grid = burn.make_cylinder(size, 0.2, 0.8)
-    erode_radii = {1:rad}
+    #grid = burn.make_cylinder(size, 0.2, 0.8)
+    #normal wagonwheel
+    #grid = burn.make_wagonwheel(size, 0.2, 0.8, math.pi/6, 4)
+    #long star shape, 2mat
+    #grid = burn.make_wagonwheel_2mat(size, 0.2, 0.8, math.pi/6, 4, 0.0, 0.3)
+    #long star
+    #grid = burn.make_wagonwheel(size, 0.2, 0.8, math.pi/6, 4, 0.0, 0.3)
+    #2mat normal wagon wheel
+    #grid = burn.make_wagonwheel_2mat(size, 0.2, 0.8, math.pi/6, 4)
+    #small star
+    #grid = burn.make_wagonwheel(size, 0.2, 0.8, math.pi/6, 4, 0.0, 0.8)
+    #small star, more leaves
+    #grid = burn.make_wagonwheel(size, 0.2, 0.8, math.pi/12, 8, 0.0, 0.8)
+    #small star, more leaves, 2mat
+    grid = burn.make_wagonwheel_2mat(size, 0.2, 0.8, math.pi/12, 8, 0.0, 0.8)
+    #randomized 2mat holes
+    grid = burn.make_holey_moley(size, 0.2, 0.8, 0.01, 100, 2, 100)
+    erode_radii = {1:rad,2:rad*2}
     B = burn.Burn(erode_radii, size, grid)
     removals, history = B.simulate((int(size/2.0),int(size/2.0)), save_history=True)
     #print removals
@@ -34,27 +50,36 @@ def plot_grid(grid, dim, fpath, removals):
     x = np.linspace(-1.0,1.0,dim)
     y = np.linspace(-1.0,1.0,dim)
     xv, yv = np.meshgrid(x,y)
-    plt.pcolor(xv, yv, grid, cmap='RdBu', vmin=grid.min(), vmax=grid.max())
+    plt.pcolorfast(xv, yv, grid, cmap='Paired', vmin=grid.min(), vmax=grid.max())
     plt.subplot(1,2,2)
     xs = np.linspace(0,1,len(removals))
     axes = [min(xs),max(xs),min(removals),max(removals)]
     plt.savefig(fpath, bbox_inches='tight')
 
-def plot_history(outimg, hist, removals):
+def plot_history(outimg, hist, removals, dim):
+    total = float(sum(removals))
+    removals = [r/total for r in removals]
+    removals = [0] + removals
     xs = np.linspace(0,1,len(removals))
     axes = [min(xs),max(xs),min(removals),max(removals)]
     paths = []
-    for i, h in hist:
+    vmin = history[0].min()
+    vmax = history[0].max()
+    x = np.linspace(-1.0,1.0,dim)
+    y = np.linspace(-1.0,1.0,dim)
+    xv, yv = np.meshgrid(x,y)
+    print np.shape(xv), np.shape(hist[0])
+    for i, h in enumerate(hist):
         fpath = os.getcwd()
         fpath = os.path.join(fpath,'imgs')
         fpath = os.path.join(fpath,'{}.png'.format(i))
         print fpath
         paths.append(fpath)
-        plt.subplot(1,2,1)
-        x = np.linspace(-1.0,1.0,dim)
-        y = np.linspace(-1.0,1.0,dim)
-        xv, yv = np.meshgrid(x,y)
-        plt.pcolor(xv, yv, grid, cmap='RdBu', vmin=grid.min(), vmax=grid.max())
+        ax = plt.subplot(1,2,1)
+        #plt.pcolor(xv, yv, h, cmap='Paired', vmin=vmin, vmax=vmax)
+        plt.imshow(h, cmap='Paired', vmin=vmin, vmax=vmax,
+           extent=[x.min(), x.max(), y.min(), y.max()],
+           interpolation='nearest', origin='lower')
         plt.subplot(1,2,2)
         plt.plot(xs[:i],removals[:i],'b')
         plt.axis(axes)
@@ -73,18 +98,10 @@ def make_gif(images, outimg, length):
 if __name__ == '__main__':
     #test_grid()
     #test_step()
-    dim = 80
+    dim = 500
     rad = 5
     removals, history = test_sim(dim, rad)
-    paths = []
-    for i,h in enumerate(history):
-        fpath = os.getcwd()
-        fpath = os.path.join(fpath,'imgs')
-        fpath = os.path.join(fpath,'{}.png'.format(i))
-        print fpath
-        paths.append(fpath)
-        plot_grid(h,dim,fpath)
     outimg = os.getcwd()
     outimg = os.path.join(outimg,'imgs')
     outimg = os.path.join(outimg,'final.gif')
-    make_gif(paths, outimg, 2)
+    plot_history(outimg, history, removals, dim)
